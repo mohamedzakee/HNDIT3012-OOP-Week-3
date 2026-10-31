@@ -1,0 +1,836 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HNDIT3012 Lab Sheet 1 — Interactive Java Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f6f3ec; --card:#fffdf8; --ink:#1c2230; --muted:#5d6878; --line:#e3ddd0;
+  --accent:#0d6b6b; --accent-soft:#dcefed; --amber:#c9741c; --amber-soft:#fbecd9;
+  --good:#2e7d4f; --good-soft:#e1f2e7; --bad:#b23b3b; --bad-soft:#f8e1e1;
+  --term:#141a21; --term-ink:#d6dee6; --term-prompt:#7fd1ae; --term-in:#f2b56b; --term-dim:#7d8a97;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --sans:"IBM Plex Sans",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --paper:#12161c; --card:#1a2028; --ink:#e6e9ee; --muted:#9aa5b3; --line:#2b333e;
+    --accent:#4fb7b0; --accent-soft:#163a3a; --amber:#e9a157; --amber-soft:#3a2a17;
+    --good:#5cc489; --good-soft:#173324; --bad:#e57373; --bad-soft:#3a1c1c; --term:#0b0f14; }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.55}
+button,input,select,textarea{font:inherit;color:inherit}
+code,pre,.mono{font-family:var(--mono)}
+a{color:var(--accent)}
+
+/* ---------- layout ---------- */
+.app{display:grid;grid-template-columns:280px 1fr;min-height:100vh}
+aside{border-right:1px solid var(--line);padding:22px 16px;position:sticky;top:0;height:100vh;overflow:auto;background:var(--paper)}
+main{padding:28px clamp(16px,4vw,48px) 64px;max-width:1040px;width:100%}
+.brand{display:flex;flex-direction:column;gap:2px;margin:0 6px 18px;cursor:pointer}
+.brand .code{font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--accent);font-weight:600}
+.brand .name{font-weight:700;font-size:17px;line-height:1.25}
+.progress{margin:0 6px 18px}
+.progress .bar{height:6px;border-radius:6px;background:var(--line);overflow:hidden}
+.progress .fill{height:100%;background:var(--accent);width:0;transition:width .4s}
+.progress .lbl{font-size:12.5px;color:var(--muted);margin-top:6px;display:flex;justify-content:space-between}
+.nav{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:2px}
+.nav button{all:unset;box-sizing:border-box;display:grid;grid-template-columns:28px 1fr 18px;align-items:center;gap:8px;width:100%;padding:8px 8px;border-radius:8px;cursor:pointer}
+.nav button:hover{background:var(--card)}
+.nav button.active{background:var(--card);box-shadow:inset 3px 0 0 var(--accent)}
+.nav .num{font-family:var(--mono);font-size:12px;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;border:1px solid var(--line);color:var(--muted)}
+.nav button.done .num{background:var(--good);border-color:var(--good);color:#fff}
+.nav .t{font-size:14px;line-height:1.3}
+.nav .t small{display:block;color:var(--muted);font-size:12px}
+.nav .chk{color:var(--good);font-size:14px}
+.side-foot{margin:18px 6px 0;font-size:12px;color:var(--muted)}
+.menu-btn{display:none}
+
+/* ---------- home ---------- */
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--accent);font-weight:600;text-transform:uppercase}
+h1{font-size:clamp(26px,3.4vw,36px);line-height:1.15;margin:6px 0 10px;letter-spacing:-.01em}
+h2{font-size:20px;margin:28px 0 10px}
+h3{font-size:16px;margin:18px 0 8px}
+.lead{color:var(--muted);max-width:68ch;font-size:16px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;margin-top:22px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px}
+.tcard{cursor:pointer;transition:transform .15s,border-color .15s;display:flex;flex-direction:column;gap:6px}
+.tcard:hover{transform:translateY(-2px);border-color:var(--accent)}
+.tcard .n{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.tcard .tt{font-weight:600;line-height:1.3}
+.tcard.done{border-color:var(--good)}
+.tcard.done .n::after{content:"  ✓ done";color:var(--good)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font-size:11.5px;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--accent);font-weight:500}
+.howto{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-top:8px}
+.howto .card b{display:block;margin-bottom:4px}
+
+/* ---------- task ---------- */
+.task-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin:20px 0 20px;overflow-x:auto}
+.tabs button{all:unset;cursor:pointer;padding:10px 14px;font-weight:500;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.tabs button.active{color:var(--ink);border-color:var(--accent)}
+.tabs button:hover{color:var(--ink)}
+.statement{font-size:17px;background:var(--card);border:1px solid var(--line);border-left:4px solid var(--accent);border-radius:10px;padding:16px 18px}
+.hint{background:var(--amber-soft);border-radius:10px;padding:12px 14px;margin:8px 0;animation:fade .3s}
+.hint b{color:var(--amber)}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.btn{border:1px solid var(--line);background:var(--card);padding:8px 14px;border-radius:8px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.small{padding:5px 10px;font-size:13px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.field{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--muted)}
+.field input,.field select,.field textarea{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;color:var(--ink);min-width:0}
+.field input:focus,.field select:focus,.field textarea:focus{outline:2px solid var(--accent-soft);border-color:var(--accent)}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.note{font-size:13.5px;color:var(--muted)}
+.toggle{display:inline-flex;align-items:center;gap:8px;font-size:14px;cursor:pointer;user-select:none}
+.toggle input{accent-color:var(--accent);width:16px;height:16px}
+
+/* terminal */
+.term{background:var(--term);color:var(--term-ink);border-radius:10px;font-family:var(--mono);font-size:13.5px;overflow:hidden;margin-top:14px}
+.term .bar{display:flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(255,255,255,.04);font-size:11.5px;color:var(--term-dim)}
+.term .bar i{width:10px;height:10px;border-radius:50%;background:#3a434e;display:inline-block}
+.term .bar span{margin-left:8px}
+.term pre{margin:0;padding:12px 14px 14px;white-space:pre-wrap;word-break:break-word;min-height:56px;line-height:1.55}
+.term .in{color:var(--term-in)}
+.term .p{color:var(--term-prompt)}
+.term .dim{color:var(--term-dim)}
+.term .err{color:#ff8a8a}
+
+/* code */
+.codewrap{position:relative;background:var(--term);border-radius:10px;overflow:hidden}
+.codewrap pre{margin:0;padding:14px 16px;overflow:auto;font-size:13px;line-height:1.6;color:#d6dee6;counter-reset:ln}
+.codewrap .ln{display:block;padding-left:0}
+.codewrap .ln::before{counter-increment:ln;content:counter(ln);display:inline-block;width:2.2em;margin-right:12px;text-align:right;color:#56616d;user-select:none}
+.codewrap .ln.hit{background:rgba(242,181,107,.16);box-shadow:inset 3px 0 0 #f2b56b}
+.codewrap .copy{position:absolute;top:8px;right:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#d6dee6;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer}
+.k{color:#c792ea}.s{color:#c3e88d}.c{color:#6f7e8c;font-style:italic}.nn{color:#f78c6c}.ty{color:#82aaff}
+.gate{text-align:center;padding:34px 20px;border:1px dashed var(--line);border-radius:12px;background:var(--card)}
+.gate p{color:var(--muted);margin:0 0 14px}
+
+/* tables */
+table.t{border-collapse:collapse;width:100%;font-size:14px;margin-top:10px}
+table.t th,table.t td{border-bottom:1px solid var(--line);padding:7px 10px;text-align:left}
+table.t th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+table.t td.mono{font-family:var(--mono)}
+table.t tr.cur td{background:var(--amber-soft)}
+table.t tr.new td{animation:fade .35s}
+
+/* diamond */
+.diamond{font-family:var(--mono);font-size:18px;line-height:1.25;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;white-space:pre;overflow:auto;text-align:left}
+.diamond .sp{color:var(--muted);opacity:.5}
+.diamond .st{color:var(--accent);font-weight:600}
+
+/* stack */
+.stack{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.frame{font-family:var(--mono);font-size:13.5px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--card);animation:fade .3s}
+.frame .ret{float:right;font-weight:600}
+.frame.t .ret{color:var(--good)} .frame.f .ret{color:var(--bad)}
+.frame em{font-style:normal;color:var(--muted)}
+.verdict{margin-top:14px;padding:12px 14px;border-radius:10px;font-weight:600}
+.verdict.y{background:var(--good-soft);color:var(--good)} .verdict.n{background:var(--bad-soft);color:var(--bad)}
+
+/* matrix */
+.mats{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:12px}
+.mat{display:inline-grid;gap:4px;padding:8px 10px;border-left:2px solid var(--ink);border-right:2px solid var(--ink);border-radius:6px}
+.mat input,.mat .cell{width:52px;height:38px;text-align:center;border:1px solid var(--line);border-radius:6px;background:var(--card);font-family:var(--mono);font-size:14px;display:grid;place-items:center}
+.mat .cell{cursor:default}
+.mat .cell.res{background:var(--accent-soft);color:var(--accent);font-weight:600;cursor:pointer}
+.mat .hl{outline:2px solid var(--amber);background:var(--amber-soft)!important}
+.mat .sel{outline:2px solid var(--accent)}
+.op{font-size:22px;color:var(--muted);font-family:var(--mono)}
+.mlabel{font-size:12px;color:var(--muted);text-align:center;margin-top:4px;font-family:var(--mono)}
+.calc{margin-top:12px;font-family:var(--mono);font-size:14px;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:10px 12px;min-height:44px}
+
+/* file */
+.filebox{background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.filebox .fh{display:flex;align-items:center;gap:8px;padding:8px 12px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:13px;color:var(--muted)}
+.filebox pre{margin:0;padding:12px;font-family:var(--mono);font-size:13.5px;min-height:90px;white-space:pre-wrap}
+
+/* sort */
+.bars{display:flex;align-items:flex-end;gap:6px;height:210px;padding:12px;background:var(--card);border:1px solid var(--line);border-radius:10px;margin-top:12px}
+.barc{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:4px;min-width:0}
+.barc .b{width:100%;max-width:56px;background:var(--line);border-radius:6px 6px 2px 2px;transition:height .3s,background .2s}
+.barc .v{font-family:var(--mono);font-size:12.5px}
+.barc.cmp .b{background:var(--amber)}
+.barc.swp .b{background:var(--bad)}
+.barc.ok .b{background:var(--good)}
+.stats{display:flex;gap:18px;font-size:13.5px;color:var(--muted);margin-top:10px;flex-wrap:wrap}
+.stats b{color:var(--ink);font-family:var(--mono)}
+.msg{margin-top:8px;font-size:14px;min-height:22px}
+
+/* quiz */
+.q{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:12px}
+.q .qt{font-weight:600;margin-bottom:10px}
+.q pre{background:var(--term);color:#d6dee6;padding:10px 12px;border-radius:8px;font-size:13px;overflow:auto;margin:0 0 10px}
+.opts{display:flex;flex-direction:column;gap:6px}
+.opts button{all:unset;box-sizing:border-box;padding:9px 12px;border:1px solid var(--line);border-radius:8px;cursor:pointer;font-size:14.5px}
+.opts button:hover:not(:disabled){border-color:var(--accent)}
+.opts button.right{background:var(--good-soft);border-color:var(--good);color:var(--good);font-weight:500}
+.opts button.wrong{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.opts button:disabled{cursor:default}
+.why{margin-top:10px;font-size:14px;color:var(--muted);animation:fade .3s}
+.done-bar{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:22px;padding:14px 16px;border-radius:12px;background:var(--card);border:1px solid var(--line)}
+.pager{display:flex;justify-content:space-between;margin-top:26px;gap:10px}
+.code-lines{margin-top:12px}
+
+@media (max-width:860px){
+  .app{grid-template-columns:1fr}
+  aside{position:fixed;inset:0 auto 0 0;width:280px;z-index:20;transform:translateX(-100%);transition:transform .25s;box-shadow:0 0 40px rgba(0,0,0,.2)}
+  aside.open{transform:none}
+  .menu-btn{display:inline-flex;position:sticky;top:10px;z-index:10;margin-bottom:10px}
+  .two{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside id="side">
+    <div class="brand" onclick="go('')">
+      <span class="code">HNDIT3012 · OOP</span>
+      <span class="name">Lab Sheet 1<br>Java Fundamentals</span>
+    </div>
+    <div class="progress">
+      <div class="bar"><div class="fill" id="pfill"></div></div>
+      <div class="lbl"><span id="plabel">0 of 10 complete</span><span id="ppct">0%</span></div>
+    </div>
+    <ul class="nav" id="nav"></ul>
+    <div class="side-foot">Companion to the Week 3 Control Flow study guide. Solutions verified on Java 21.<br><br><button class="btn small" onclick="resetProgress()">Reset progress</button></div>
+  </aside>
+  <main id="main"></main>
+</div>
+
+<script>
+const JAVA = {"Lab10_ArrayMethods": "import java.util.Scanner;\n\npublic class Lab10_ArrayMethods {\n    static Scanner sc = new Scanner(System.in);\n\n    // a. Read numbers into the array\n    static void read(int a[]) {\n        System.out.println(\"Enter \" + a.length + \" numbers:\");\n        for (int i = 0; i < a.length; i++)\n            a[i] = sc.nextInt();\n    }\n\n    // b. Sort the array in ascending order (bubble sort)\n    static void sort(int a[]) {\n        for (int i = 0; i < a.length - 1; i++) {\n            for (int j = 0; j < a.length - 1 - i; j++) {\n                if (a[j] > a[j + 1]) {\n                    int temp = a[j];\n                    a[j] = a[j + 1];\n                    a[j + 1] = temp;\n                }\n            }\n        }\n    }\n\n    // c. Print the array\n    static void print(int a[]) {\n        for (int i = 0; i < a.length; i++)\n            System.out.print(a[i] + \" \");\n        System.out.println();\n    }\n\n    public static void main(String[] args) {\n        System.out.print(\"How many numbers? \");\n        int n = sc.nextInt();\n        int[] numbers = new int[n];\n        read(numbers);\n        sort(numbers);\n        System.out.print(\"Sorted: \");\n        print(numbers);\n    }\n}\n", "Lab1_TempConverter": "import java.util.Scanner;\n\npublic class Lab1_TempConverter {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        System.out.print(\"Enter temperature in Fahrenheit: \");\n        double f = sc.nextDouble();\n        double c = (f - 32) * 5 / 9;\n        System.out.printf(\"%.1f F = %.2f C%n\", f, c);\n        sc.close();\n    }\n}\n", "Lab2_DigitSum": "import java.util.Scanner;\n\npublic class Lab2_DigitSum {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        System.out.print(\"Enter an integer between 0 and 1000: \");\n        int n = sc.nextInt();\n        if (n < 0 || n > 1000) {\n            System.out.println(\"Invalid input. Number must be 0 to 1000.\");\n        } else {\n            int original = n;\n            int sum = 0;\n            while (n > 0) {\n                sum += n % 10;   // take the last digit\n                n = n / 10;      // remove the last digit\n            }\n            System.out.println(\"Sum of digits of \" + original + \" = \" + sum);\n        }\n        sc.close();\n    }\n}\n", "Lab3_Greatest": "import java.util.Scanner;\n\npublic class Lab3_Greatest {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        System.out.print(\"Enter first number: \");\n        double a = sc.nextDouble();\n        System.out.print(\"Enter second number: \");\n        double b = sc.nextDouble();\n        System.out.print(\"Enter third number: \");\n        double c = sc.nextDouble();\n\n        double greatest;\n        if (a >= b && a >= c) {\n            greatest = a;\n        } else if (b >= a && b >= c) {\n            greatest = b;\n        } else {\n            greatest = c;\n        }\n        System.out.println(\"The greatest number is: \" + greatest);\n        sc.close();\n    }\n}\n", "Lab4_DaysInMonth": "import java.util.Scanner;\n\npublic class Lab4_DaysInMonth {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        System.out.print(\"Enter month number (1-12): \");\n        int month = sc.nextInt();\n        System.out.print(\"Enter year: \");\n        int year = sc.nextInt();\n\n        int days;\n        switch (month) {\n            case 1: case 3: case 5: case 7: case 8: case 10: case 12:\n                days = 31;\n                break;\n            case 4: case 6: case 9: case 11:\n                days = 30;\n                break;\n            case 2:\n                boolean leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);\n                days = leap ? 29 : 28;\n                break;\n            default:\n                days = -1;\n        }\n\n        if (days == -1)\n            System.out.println(\"Invalid month\");\n        else\n            System.out.println(\"Month \" + month + \" of \" + year + \" has \" + days + \" days\");\n        sc.close();\n    }\n}\n", "Lab5_Diamond": "import java.util.Scanner;\n\npublic class Lab5_Diamond {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        System.out.print(\"Input number of rows (half of the diamond): \");\n        int n = sc.nextInt();\n\n        // Upper half (including the middle row)\n        for (int i = 1; i <= n; i++) {\n            for (int s = 1; s <= n - i; s++) System.out.print(\" \");\n            for (int k = 1; k <= 2 * i - 1; k++) System.out.print(\"*\");\n            System.out.println();\n        }\n        // Lower half\n        for (int i = n - 1; i >= 1; i--) {\n            for (int s = 1; s <= n - i; s++) System.out.print(\" \");\n            for (int k = 1; k <= 2 * i - 1; k++) System.out.print(\"*\");\n            System.out.println();\n        }\n        sc.close();\n    }\n}\n", "Lab6_Palindrome": "import java.util.Scanner;\n\npublic class Lab6_Palindrome {\n\n    // Recursive method: compares first and last characters, then the inside\n    static boolean isPalindrome(String s) {\n        if (s.length() <= 1)                      // base case\n            return true;\n        if (s.charAt(0) != s.charAt(s.length() - 1))\n            return false;\n        return isPalindrome(s.substring(1, s.length() - 1)); // recursive case\n    }\n\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        System.out.print(\"Enter a string: \");\n        String input = sc.nextLine();\n        String cleaned = input.toLowerCase().replaceAll(\"[^a-z0-9]\", \"\");\n        if (isPalindrome(cleaned))\n            System.out.println(\"\\\"\" + input + \"\\\" is a palindrome\");\n        else\n            System.out.println(\"\\\"\" + input + \"\\\" is not a palindrome\");\n        sc.close();\n    }\n}\n", "Lab7_MatrixAdd": "import java.util.Scanner;\n\npublic class Lab7_MatrixAdd {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        System.out.print(\"Enter number of rows: \");\n        int r = sc.nextInt();\n        System.out.print(\"Enter number of columns: \");\n        int c = sc.nextInt();\n\n        int[][] a = new int[r][c];\n        int[][] b = new int[r][c];\n        int[][] sum = new int[r][c];\n\n        System.out.println(\"Enter elements of matrix A:\");\n        for (int i = 0; i < r; i++)\n            for (int j = 0; j < c; j++)\n                a[i][j] = sc.nextInt();\n\n        System.out.println(\"Enter elements of matrix B:\");\n        for (int i = 0; i < r; i++)\n            for (int j = 0; j < c; j++)\n                b[i][j] = sc.nextInt();\n\n        for (int i = 0; i < r; i++)\n            for (int j = 0; j < c; j++)\n                sum[i][j] = a[i][j] + b[i][j];\n\n        System.out.println(\"A + B =\");\n        for (int i = 0; i < r; i++) {\n            for (int j = 0; j < c; j++)\n                System.out.print(sum[i][j] + \"\\t\");\n            System.out.println();\n        }\n        sc.close();\n    }\n}\n", "Lab8_MatrixMultiply": "import java.util.Scanner;\n\npublic class Lab8_MatrixMultiply {\n    public static void main(String[] args) {\n        Scanner sc = new Scanner(System.in);\n        System.out.print(\"Rows and columns of A: \");\n        int r1 = sc.nextInt(), c1 = sc.nextInt();\n        System.out.print(\"Rows and columns of B: \");\n        int r2 = sc.nextInt(), c2 = sc.nextInt();\n\n        if (c1 != r2) {\n            System.out.println(\"Cannot multiply: columns of A must equal rows of B.\");\n            return;\n        }\n\n        int[][] a = new int[r1][c1];\n        int[][] b = new int[r2][c2];\n        int[][] p = new int[r1][c2];\n\n        System.out.println(\"Enter elements of A:\");\n        for (int i = 0; i < r1; i++)\n            for (int j = 0; j < c1; j++)\n                a[i][j] = sc.nextInt();\n        System.out.println(\"Enter elements of B:\");\n        for (int i = 0; i < r2; i++)\n            for (int j = 0; j < c2; j++)\n                b[i][j] = sc.nextInt();\n\n        for (int i = 0; i < r1; i++)\n            for (int j = 0; j < c2; j++)\n                for (int k = 0; k < c1; k++)\n                    p[i][j] += a[i][k] * b[k][j];\n\n        System.out.println(\"A x B =\");\n        for (int i = 0; i < r1; i++) {\n            for (int j = 0; j < c2; j++)\n                System.out.print(p[i][j] + \"\\t\");\n            System.out.println();\n        }\n        sc.close();\n    }\n}\n", "Lab9_FileReadWrite": "import java.io.BufferedReader;\nimport java.io.FileReader;\nimport java.io.FileWriter;\nimport java.io.IOException;\nimport java.io.PrintWriter;\n\npublic class Lab9_FileReadWrite {\n    public static void main(String[] args) {\n        String fileName = \"students.txt\";\n\n        // 1. Write to the file\n        try (PrintWriter out = new PrintWriter(new FileWriter(fileName))) {\n            out.println(\"Ahamed,HNDIT,Year 2\");\n            out.println(\"Fathima,HNDIT,Year 2\");\n            out.println(\"Ravi,HNDIT,Year 2\");\n            System.out.println(\"Data written to \" + fileName);\n        } catch (IOException e) {\n            System.out.println(\"Error writing file: \" + e.getMessage());\n        }\n\n        // 2. Read it back line by line\n        try (BufferedReader in = new BufferedReader(new FileReader(fileName))) {\n            String line;\n            int lineNo = 1;\n            System.out.println(\"Reading \" + fileName + \":\");\n            while ((line = in.readLine()) != null) {\n                System.out.println(lineNo + \": \" + line);\n                lineNo++;\n            }\n        } catch (IOException e) {\n            System.out.println(\"Error reading file: \" + e.getMessage());\n        }\n    }\n}\n"};
+
+/* ---------------- helpers ---------------- */
+const $ = (s, r = document) => r.querySelector(s);
+const esc = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const h = (html) => { const t = document.createElement('template'); t.innerHTML = html.trim(); return t.content.firstElementChild; };
+
+const KW = new Set('abstract assert boolean break byte case catch char class const continue default do double else enum extends final finally float for goto if implements import instanceof int interface long native new package private protected public return short static super switch synchronized this throw throws transient try void volatile while true false null var'.split(' '));
+function hlJava(code){
+  const re = /(\/\/[^\n]*)|(\/\*[\s\S]*?\*\/)|("(?:\\.|[^"\\\n])*")|('(?:\\.|[^'\\\n])')|(\b\d+(?:\.\d+)?\b)|(\b[A-Za-z_]\w*\b)/g;
+  let out = '', last = 0, m;
+  while ((m = re.exec(code))){
+    out += esc(code.slice(last, m.index));
+    const t = esc(m[0]);
+    if (m[1] || m[2]) out += `<span class="c">${t}</span>`;
+    else if (m[3] || m[4]) out += `<span class="s">${t}</span>`;
+    else if (m[5]) out += `<span class="nn">${t}</span>`;
+    else if (KW.has(m[0])) out += `<span class="k">${t}</span>`;
+    else if (/^[A-Z]/.test(m[0])) out += `<span class="ty">${t}</span>`;
+    else out += t;
+    last = re.lastIndex;
+  }
+  out += esc(code.slice(last));
+  return out.split('\n').map(l => `<span class="ln">${l || ' '}</span>`).join('');
+}
+function codeBlock(code, {copy = true, hits = []} = {}){
+  const el = h(`<div class="codewrap"><pre>${hlJava(code)}</pre>${copy ? '<button class="copy">Copy</button>' : ''}</div>`);
+  hits.forEach(i => { const ln = el.querySelectorAll('.ln')[i]; if (ln) ln.classList.add('hit'); });
+  if (copy) $('.copy', el).onclick = async (e) => {
+    try { await navigator.clipboard.writeText(code); e.target.textContent = 'Copied'; }
+    catch { e.target.textContent = 'Select & copy manually'; }
+    setTimeout(() => e.target.textContent = 'Copy', 1600);
+  };
+  return el;
+}
+function setHits(wrap, hits){
+  wrap.querySelectorAll('.ln').forEach((l, i) => l.classList.toggle('hit', hits.includes(i)));
+}
+/* terminal: lines is array of [type,text]; types: p (program print), in (user input), err, dim */
+function term(title = 'java'){
+  const el = h(`<div class="term"><div class="bar"><i></i><i></i><i></i><span>${esc(title)}</span></div><pre></pre></div>`);
+  el.set = (parts) => { $('pre', el).innerHTML = parts.map(([t, s]) => t === 'p' ? esc(s) : `<span class="${t}">${esc(s)}</span>`).join(''); };
+  return el;
+}
+const fmt = (x) => Number.isInteger(x) ? x.toFixed(1) : String(+x.toFixed(10));
+
+/* ---------------- progress ---------------- */
+let done = new Set();
+try { done = new Set(JSON.parse(localStorage.getItem('hndit3012-lab1-done') || '[]')); } catch {}
+function saveDone(){ try { localStorage.setItem('hndit3012-lab1-done', JSON.stringify([...done])); } catch {} renderNav(); }
+function resetProgress(){ done.clear(); saveDone(); route(); }
+
+/* ---------------- tasks ---------------- */
+const TASKS = [
+{
+  title: 'Fahrenheit to Celsius', short: 'Temperature', concepts: ['Scanner', 'double', 'arithmetic'], java: 'Lab1_TempConverter',
+  statement: 'Write a Java program to convert temperature from Fahrenheit to Celsius degrees.',
+  hints: [
+    'The formula is <code>C = (F − 32) × 5 / 9</code>.',
+    'Read the input with <code>Scanner</code> and <code>nextDouble()</code> so decimals like 98.6 work.',
+    'Watch out: <code>5 / 9</code> with two <code>int</code>s equals <b>0</b> in Java. Keep a <code>double</code> in the expression before dividing.',
+    'Use <code>System.out.printf("%.2f", c)</code> to print two decimal places.'
+  ],
+  approach: 'Read F as a double → subtract 32 → multiply by 5 → divide by 9 → print. Sanity checks: 32 °F = 0 °C, 212 °F = 100 °C, 98.6 °F = 37 °C.',
+  tryit(root){
+    root.append(h(`<div><div class="row">
+      <label class="field">Fahrenheit<input id="f" type="number" step="any" value="98.6" style="width:140px"></label>
+      <button class="btn primary" id="run">Run</button>
+      <label class="toggle" style="margin-left:8px"><input type="checkbox" id="bug"> Simulate the bug: <code>(f - 32) * (5 / 9)</code></label>
+    </div><div id="t"></div>
+    <h3>Quick reference</h3>
+    <table class="t"><thead><tr><th>°F</th><th>°C</th><th>Meaning</th></tr></thead><tbody>
+    <tr><td class="mono">-40</td><td class="mono">-40.00</td><td>Same on both scales</td></tr>
+    <tr><td class="mono">32</td><td class="mono">0.00</td><td>Water freezes</td></tr>
+    <tr><td class="mono">98.6</td><td class="mono">37.00</td><td>Body temperature</td></tr>
+    <tr><td class="mono">212</td><td class="mono">100.00</td><td>Water boils</td></tr></tbody></table></div>`));
+    const t = term('Lab1_TempConverter'); $('#t', root).append(t);
+    const run = () => {
+      const raw = $('#f', root).value; const f = parseFloat(raw);
+      if (isNaN(f)) return t.set([['p','Enter temperature in Fahrenheit: '],['err','\nException in thread "main" java.util.InputMismatchException']]);
+      const bug = $('#bug', root).checked;
+      const c = bug ? (f - 32) * 0 : (f - 32) * 5 / 9;
+      const parts = [['p','Enter temperature in Fahrenheit: '],['in', raw + '\n'],['p', `${f.toFixed(1)} F = ${c.toFixed(2)} C\n`]];
+      if (bug) parts.push(['dim', '\n// 5 / 9 is integer division = 0, so every answer is 0.00']);
+      t.set(parts);
+    };
+    $('#run', root).onclick = run; $('#f', root).oninput = run; $('#bug', root).onchange = run; run();
+  },
+  quiz: [
+    { q: 'What does <code>(98.6 - 32) * (5 / 9)</code> evaluate to in Java?', o: ['37.0', '0.0', '37', 'Compile error'], a: 1, why: '<code>5 / 9</code> is evaluated first as integer division, giving 0. Anything times 0 is 0.0.' },
+    { q: 'Which Scanner method should read a temperature like 98.6?', o: ['nextInt()', 'next()', 'nextDouble()', 'nextLine()'], a: 2, why: '<code>nextInt()</code> would throw InputMismatchException on a decimal; <code>nextDouble()</code> reads it correctly.' }
+  ]
+},
+{
+  title: 'Sum of digits', short: '0 – 1000', concepts: ['while', '% and /', 'validation'], java: 'Lab2_DigitSum',
+  statement: 'Write a Java program that reads an integer between 0 and 1000 and adds all the digits in the integer. <br><span class="mono">765 ⇒ 7 + 6 + 5 = 18</span>',
+  hints: [
+    '<code>n % 10</code> gives you the last digit of n.',
+    '<code>n / 10</code> (integer division) removes the last digit.',
+    'Repeat in a <code>while (n &gt; 0)</code> loop, adding each last digit to a <code>sum</code>.',
+    'Check the range first with <code>if (n &lt; 0 || n &gt; 1000)</code>.'
+  ],
+  approach: 'Validate → loop: add n % 10 to sum, then n = n / 10 → stop when n is 0 → print sum. Save the original number first, because the loop destroys n.',
+  tryit(root){
+    root.append(h(`<div><div class="row">
+      <label class="field">Integer (0 – 1000)<input id="n" type="number" value="765" style="width:140px"></label>
+      <button class="btn primary" id="step">Step</button><button class="btn" id="all">Run all</button><button class="btn" id="rst">Reset</button>
+    </div>
+    <table class="t"><thead><tr><th>Pass</th><th>n</th><th>n % 10 (digit)</th><th>sum</th><th>n / 10 (next n)</th></tr></thead><tbody id="tb"></tbody></table>
+    <div id="t"></div></div>`));
+    const t = term('Lab2_DigitSum'); $('#t', root).append(t);
+    let st;
+    const reset = () => {
+      const raw = $('#n', root).value; const n = parseInt(raw, 10);
+      st = { raw, n, orig: n, sum: 0, pass: 0, fin: false, bad: isNaN(n) || n < 0 || n > 1000 };
+      $('#tb', root).innerHTML = '';
+      if (st.bad){ st.fin = true; t.set([['p','Enter an integer between 0 and 1000: '],['in', raw + '\n'],['p','Invalid input. Number must be 0 to 1000.\n']]); }
+      else t.set([['p','Enter an integer between 0 and 1000: '],['in', raw + '\n'],['dim','// press Step to run the while loop one pass at a time']]);
+      if (!st.bad && n === 0) finish();
+    };
+    const finish = () => { st.fin = true; $$rows(); t.set([['p','Enter an integer between 0 and 1000: '],['in', st.raw + '\n'],['p', `Sum of digits of ${st.orig} = ${st.sum}\n`],['dim', `// loop ended: n > 0 is false after ${st.pass} pass${st.pass===1?'':'es'}`]]); };
+    const $$rows = () => root.querySelectorAll('#tb tr').forEach(r => r.classList.remove('cur'));
+    const step = () => {
+      if (st.fin) return;
+      if (st.n <= 0) return finish();
+      const d = st.n % 10, next = Math.floor(st.n / 10); st.sum += d; st.pass++;
+      $$rows();
+      $('#tb', root).append(h(`<table><tr class="cur new"><td>${st.pass}</td><td class="mono">${st.n}</td><td class="mono">${d}</td><td class="mono">${st.sum}</td><td class="mono">${next}</td></tr></table>`).querySelector('tr'));
+      st.n = next; if (st.n === 0) finish();
+    };
+    $('#step', root).onclick = step;
+    $('#all', root).onclick = () => { while (!st.fin) step(); };
+    $('#rst', root).onclick = reset; $('#n', root).oninput = reset; reset();
+  },
+  quiz: [
+    { q: 'What are <code>1000 % 10</code> and <code>1000 / 10</code>?', o: ['0 and 100', '1 and 100', '0 and 100.0', '10 and 0'], a: 0, why: '1000 ends in 0, so the remainder is 0; integer division drops the last digit, giving 100.' },
+    { q: 'Why use <code>while</code> instead of <code>for</code> here?', o: ['for cannot use %', 'The number of digits is not known in advance', 'while is faster', 'for needs an array'], a: 1, why: 'The loop runs once per digit, and the number of digits depends on the input. <code>while</code> suits an unknown repeat count.' }
+  ]
+},
+{
+  title: 'Greatest of three', short: 'Selection', concepts: ['if – else if', '&&', 'Math.max'], java: 'Lab3_Greatest',
+  statement: 'Write a Java program that takes three numbers from the user and prints the greatest number.',
+  hints: [
+    'A number is the greatest if it is greater than or equal to <b>both</b> of the others.',
+    'Combine two comparisons with <code>&amp;&amp;</code>: <code>a &gt;= b &amp;&amp; a &gt;= c</code>.',
+    'Use an <code>if – else if – else</code> ladder; if neither a nor b wins, c must be the greatest.',
+    'Use <code>&gt;=</code> rather than <code>&gt;</code> so equal numbers (e.g. 5, 5, 2) still work.'
+  ],
+  approach: 'Read a, b, c → if a ≥ b and a ≥ c then a; else if b ≥ a and b ≥ c then b; else c. One-line alternative: Math.max(a, Math.max(b, c)).',
+  tryit(root){
+    root.append(h(`<div><div class="row">
+      <label class="field">a<input id="a" type="number" step="any" value="12" style="width:100px"></label>
+      <label class="field">b<input id="b" type="number" step="any" value="45" style="width:100px"></label>
+      <label class="field">c<input id="c" type="number" step="any" value="7" style="width:100px"></label>
+    </div><p class="note">The highlighted line is the branch Java takes for your input.</p><div id="code"></div><div id="t"></div></div>`));
+    const snippet = `if (a >= b && a >= c) {\n    greatest = a;\n} else if (b >= a && b >= c) {\n    greatest = b;\n} else {\n    greatest = c;\n}`;
+    const cw = codeBlock(snippet, {copy:false}); $('#code', root).append(cw);
+    const t = term('Lab3_Greatest'); $('#t', root).append(t);
+    const run = () => {
+      const r = ['a','b','c'].map(k => $('#' + k, root).value), [a, b, c] = r.map(parseFloat);
+      if ([a,b,c].some(isNaN)) { setHits(cw, []); return t.set([['err','Enter three numbers.']]); }
+      let g, hits;
+      if (a >= b && a >= c) { g = a; hits = [0,1]; } else if (b >= a && b >= c) { g = b; hits = [2,3]; } else { g = c; hits = [4,5]; }
+      setHits(cw, hits);
+      t.set([['p','Enter first number: '],['in', r[0]+'\n'],['p','Enter second number: '],['in', r[1]+'\n'],['p','Enter third number: '],['in', r[2]+'\n'],['p', `The greatest number is: ${fmt(g)}\n`]]);
+    };
+    root.querySelectorAll('input').forEach(i => i.oninput = run); run();
+  },
+  quiz: [
+    { q: 'Inputs are 5, 9, 9. Which branch runs?', o: ['First (a)', 'Second (b)', 'Third (c)', 'None'], a: 1, why: 'a ≥ b is false. b ≥ a and b ≥ c (9 ≥ 9) are both true, so the else-if branch runs and prints 9.0.' },
+    { q: 'If the conditions used <code>&gt;</code> instead of <code>&gt;=</code>, what would inputs 9, 9, 2 print?', o: ['9.0 from a', '9.0 from b', '2.0 from c (wrong!)', 'Nothing'], a: 2, why: 'a > b is false and b > a is false, so it falls through to else and wrongly prints 2.0.' }
+  ]
+},
+{
+  title: 'Days in a month', short: 'switch', concepts: ['switch', 'fall-through', 'leap year'], java: 'Lab4_DaysInMonth',
+  statement: 'Write a Java program to find the number of days in a month.',
+  hints: [
+    'Ask for the month number (1–12) and the year (February depends on it).',
+    'A <code>switch</code> lets several cases share one result: <code>case 4: case 6: case 9: case 11: days = 30; break;</code>',
+    'Leap year rule: divisible by 4 and not by 100, <b>or</b> divisible by 400.',
+    'Use <code>default</code> to catch invalid months like 0 or 13.'
+  ],
+  approach: 'switch(month): 1,3,5,7,8,10,12 → 31; 4,6,9,11 → 30; 2 → 29 if leap else 28; default → invalid.',
+  tryit(root){
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    root.append(h(`<div><div class="row">
+      <label class="field">Month<select id="m">${months.map((m,i)=>`<option value="${i+1}" ${i===1?'selected':''}>${i+1} – ${m}</option>`).join('')}<option value="13">13 – (invalid)</option></select></label>
+      <label class="field">Year<input id="y" type="number" value="2024" style="width:110px"></label>
+    </div><div id="leap" class="note" style="margin-top:8px"></div><div id="code" class="code-lines"></div><div id="t"></div></div>`));
+    const snippet = `switch (month) {\n    case 1: case 3: case 5: case 7: case 8: case 10: case 12:\n        days = 31;\n        break;\n    case 4: case 6: case 9: case 11:\n        days = 30;\n        break;\n    case 2:\n        boolean leap = (year % 4 == 0 && year % 100 != 0) || (year % 400 == 0);\n        days = leap ? 29 : 28;\n        break;\n    default:\n        days = -1;\n}`;
+    const cw = codeBlock(snippet, {copy:false}); $('#code', root).append(cw);
+    const t = term('Lab4_DaysInMonth'); $('#t', root).append(t);
+    const run = () => {
+      const m = +$('#m', root).value, yr = $('#y', root).value, y = parseInt(yr, 10);
+      let days, hits;
+      const leap = (y % 4 === 0 && y % 100 !== 0) || (y % 400 === 0);
+      if ([1,3,5,7,8,10,12].includes(m)) { days = 31; hits = [1,2,3]; }
+      else if ([4,6,9,11].includes(m)) { days = 30; hits = [4,5,6]; }
+      else if (m === 2) { days = leap ? 29 : 28; hits = [7,8,9,10]; }
+      else { days = -1; hits = [11,12]; }
+      setHits(cw, hits);
+      $('#leap', root).innerHTML = isNaN(y) ? '' : `${y} % 4 = ${y%4}, ${y} % 100 = ${y%100}, ${y} % 400 = ${y%400} → <b>${y} is ${leap ? '' : 'not '}a leap year</b>`;
+      t.set([['p','Enter month number (1-12): '],['in', m + '\n'],['p','Enter year: '],['in', yr + '\n'],['p', days === -1 ? 'Invalid month\n' : `Month ${m} of ${y} has ${days} days\n`]]);
+    };
+    $('#m', root).onchange = run; $('#y', root).oninput = run; run();
+  },
+  quiz: [
+    { q: 'Which of these years is a leap year?', o: ['1900', '2026', '2000', '2100'], a: 2, why: '2000 is divisible by 400. 1900 and 2100 are divisible by 100 but not 400; 2026 is not divisible by 4.' },
+    { q: 'If the <code>break</code> after <code>days = 30;</code> were removed, what would month 4 give?', o: ['30', '31', '28 or 29 (falls into case 2)', 'Compile error'], a: 2, why: 'Without break, execution falls through into case 2 and overwrites days with 28 or 29.' }
+  ]
+},
+{
+  title: 'Diamond pattern', short: 'Nested loops', concepts: ['nested for', 'patterns'], java: 'Lab5_Diamond',
+  statement: 'Write a Java program to display the pattern like a diamond. <br><span class="note">Test data — Input number of rows (half of the diamond): 3</span>',
+  hints: [
+    'Split it into a top half (rows 1 to n, including the middle) and a bottom half (rows n−1 down to 1).',
+    'Row i needs <code>n − i</code> leading spaces.',
+    'Row i needs <code>2i − 1</code> stars: 1, 3, 5, …',
+    'Each row = an outer loop pass with two inner loops (spaces, then stars), then <code>System.out.println()</code>.'
+  ],
+  approach: 'Outer loop over rows; inner loop 1 prints n − i spaces; inner loop 2 prints 2i − 1 stars; println. Repeat in reverse for the bottom half.',
+  tryit(root){
+    root.append(h(`<div><div class="row">
+      <label class="field">Half rows (n): <b id="nv">3</b><input id="n" type="range" min="1" max="10" value="3" style="width:220px"></label>
+      <label class="toggle"><input type="checkbox" id="dots" checked> Show spaces as ·</label>
+    </div><div class="two" style="margin-top:12px"><div id="d" class="diamond"></div>
+    <div><table class="t"><thead><tr><th>Row i</th><th>Spaces n − i</th><th>Stars 2i − 1</th></tr></thead><tbody id="tb"></tbody></table></div></div>
+    <div id="t"></div></div>`));
+    const t = term('Lab5_Diamond'); $('#t', root).append(t);
+    const run = () => {
+      const n = +$('#n', root).value, dots = $('#dots', root).checked; $('#nv', root).textContent = n;
+      const rows = []; for (let i = 1; i <= n; i++) rows.push(i); for (let i = n - 1; i >= 1; i--) rows.push(i);
+      $('#d', root).innerHTML = rows.map(i => `<span class="sp">${(dots ? '·' : ' ').repeat(n - i)}</span><span class="st">${'*'.repeat(2*i-1)}</span>`).join('\n');
+      $('#tb', root).innerHTML = rows.map(i => `<tr><td class="mono">${i}</td><td class="mono">${n-i}</td><td class="mono">${2*i-1}</td></tr>`).join('');
+      t.set([['p','Input number of rows (half of the diamond): '],['in', n + '\n'],['p', rows.map(i => ' '.repeat(n-i) + '*'.repeat(2*i-1)).join('\n') + '\n']]);
+    };
+    $('#n', root).oninput = run; $('#dots', root).onchange = run; run();
+  },
+  quiz: [
+    { q: 'For n = 4, how many stars are on the middle row?', o: ['4', '7', '8', '9'], a: 1, why: 'Middle row is i = n = 4, and 2 × 4 − 1 = 7.' },
+    { q: 'For n = 4, how many lines does the whole diamond have?', o: ['4', '7', '8', '9'], a: 1, why: 'Top half has n = 4 rows, bottom half has n − 1 = 3 rows: 2n − 1 = 7.' }
+  ]
+},
+{
+  title: 'Recursive palindrome', short: 'Recursion', concepts: ['recursion', 'base case', 'String'], java: 'Lab6_Palindrome',
+  statement: 'Write a Java recursive method to check if a given string is a palindrome.',
+  hints: [
+    'A palindrome reads the same forwards and backwards: madam, level, racecar.',
+    '<b>Base case:</b> a string of length 0 or 1 is always a palindrome.',
+    'If the first and last characters differ, return <code>false</code> immediately.',
+    '<b>Recursive case:</b> check the middle part: <code>isPalindrome(s.substring(1, s.length() - 1))</code>.'
+  ],
+  approach: 'isPalindrome(s): if length ≤ 1 → true; if first ≠ last → false; else return isPalindrome(inside). Clean the input first (lowercase, remove spaces/punctuation) so "Madam" and "Never odd or even" work.',
+  tryit(root){
+    root.append(h(`<div><div class="row">
+      <label class="field">String<input id="s" type="text" value="racecar" style="width:260px"></label>
+      <button class="btn primary" id="go">Trace calls</button>
+      <span class="note">Try: Madam · level · hello · Never odd or even</span>
+    </div><div class="stack" id="stk"></div><div id="v"></div><div id="t"></div></div>`));
+    const t = term('Lab6_Palindrome'); $('#t', root).append(t);
+    let timer;
+    const run = () => {
+      clearInterval(timer);
+      const input = $('#s', root).value, cleaned = input.toLowerCase().replace(/[^a-z0-9]/g, '');
+      const calls = []; const rec = (s, d) => {
+        if (s.length <= 1) { calls.push({s, d, r: true, why: 'base case: length ≤ 1'}); return true; }
+        if (s[0] !== s[s.length-1]) { calls.push({s, d, r: false, why: `'${s[0]}' ≠ '${s[s.length-1]}'`}); return false; }
+        calls.push({s, d, r: null, why: `'${s[0]}' = '${s[s.length-1]}', check inside`});
+        const r = rec(s.slice(1, -1), d + 1); calls.find(c => c.s === s && c.d === d).r = r; return r;
+      };
+      const res = rec(cleaned, 0);
+      const stk = $('#stk', root); stk.innerHTML = ''; $('#v', root).innerHTML = ''; t.set([['dim','// tracing…']]);
+      if (cleaned !== input) stk.append(h(`<div class="note">Cleaned input: "${esc(cleaned)}"</div>`));
+      let i = 0;
+      timer = setInterval(() => {
+        if (i >= calls.length){ clearInterval(timer);
+          $('#v', root).innerHTML = `<div class="verdict ${res?'y':'n'}">"${esc(input)}" is ${res?'':'not '}a palindrome</div>`;
+          t.set([['p','Enter a string: '],['in', input + '\n'],['p', `"${input}" is ${res?'':'not '}a palindrome\n`]]); return; }
+        const c = calls[i++];
+        stk.append(h(`<div class="frame ${c.r?'t':'f'}" style="margin-left:${c.d*22}px">isPalindrome("${esc(c.s)}") <em>— ${esc(c.why)}</em><span class="ret">→ ${c.r}</span></div>`));
+      }, 420);
+    };
+    $('#go', root).onclick = run; $('#s', root).onkeydown = e => { if (e.key === 'Enter') run(); }; run();
+  },
+  quiz: [
+    { q: 'How many times is <code>isPalindrome</code> called for "level"?', o: ['1', '2', '3', '5'], a: 2, why: '"level" → "eve" → "v" (base case). That is 3 calls.' },
+    { q: 'What happens if the base case is missing?', o: ['Returns false', 'Infinite loop warning at compile time', 'StackOverflowError (or index error) at run time', 'Nothing'], a: 2, why: 'Without a stopping condition the method keeps calling itself until the call stack overflows or substring fails.' }
+  ]
+},
+{
+  title: 'Matrix addition', short: '2D arrays', concepts: ['int[][]', 'nested loops'], java: 'Lab7_MatrixAdd',
+  statement: 'Write a program to add two matrices using a two-dimensional array.',
+  hints: [
+    'Declare <code>int[][] a = new int[r][c];</code> for each matrix.',
+    'Both matrices must be the same size.',
+    'Use nested loops: outer over rows <code>i</code>, inner over columns <code>j</code>.',
+    '<code>sum[i][j] = a[i][j] + b[i][j];</code>'
+  ],
+  approach: 'Read r and c → read A and B with nested loops → sum[i][j] = a[i][j] + b[i][j] → print row by row, separating values with "\\t".',
+  tryit(root){
+    root.append(h(`<div><div class="row">
+      <label class="field">Rows<select id="r">${[1,2,3,4].map(v=>`<option ${v===2?'selected':''}>${v}</option>`).join('')}</select></label>
+      <label class="field">Columns<select id="c">${[1,2,3,4].map(v=>`<option ${v===2?'selected':''}>${v}</option>`).join('')}</select></label>
+      <button class="btn" id="rnd">Random values</button>
+    </div><p class="note">Edit any cell; hover a result cell to see its calculation.</p><div class="mats" id="mats"></div><div class="calc" id="calc">Hover a cell in A + B</div></div>`));
+    let A = [[1,2],[3,4]], B = [[5,6],[7,8]];
+    const build = () => {
+      const r = +$('#r', root).value, c = +$('#c', root).value;
+      const fit = M => Array.from({length:r}, (_, i) => Array.from({length:c}, (_, j) => (M[i] && M[i][j] != null) ? M[i][j] : 0));
+      A = fit(A); B = fit(B);
+      const mats = $('#mats', root); mats.innerHTML = '';
+      const ed = (M, name) => { const w = h(`<div><div class="mat" style="grid-template-columns:repeat(${c},auto)"></div><div class="mlabel">${name}</div></div>`);
+        M.forEach((row, i) => row.forEach((v, j) => { const inp = h(`<input type="number" value="${v}" data-i="${i}" data-j="${j}">`); inp.oninput = () => { M[i][j] = parseInt(inp.value, 10) || 0; calc(); }; $('.mat', w).append(inp); })); return w; };
+      const res = h(`<div><div class="mat" id="res" style="grid-template-columns:repeat(${c},auto)"></div><div class="mlabel">A + B</div></div>`);
+      const wa = ed(A, 'A'), wb = ed(B, 'B');
+      mats.append(wa, h('<span class="op">+</span>'), wb, h('<span class="op">=</span>'), res);
+      const calc = () => {
+        const R = $('#res', root); R.innerHTML = '';
+        A.forEach((row, i) => row.forEach((_, j) => {
+          const cell = h(`<div class="cell res">${A[i][j] + B[i][j]}</div>`);
+          const on = () => { [wa, wb].forEach(w => w.querySelectorAll('input').forEach(x => x.classList.toggle('hl', +x.dataset.i === i && +x.dataset.j === j)));
+            $('#calc', root).textContent = `sum[${i}][${j}] = a[${i}][${j}] + b[${i}][${j}] = ${A[i][j]} + ${B[i][j]} = ${A[i][j] + B[i][j]}`; };
+          cell.onmouseenter = on; cell.onclick = on; R.append(cell);
+        }));
+      };
+      calc();
+    };
+    $('#r', root).onchange = build; $('#c', root).onchange = build;
+    $('#rnd', root).onclick = () => { const r = +$('#r', root).value, c = +$('#c', root).value; const g = () => Array.from({length:r}, () => Array.from({length:c}, () => Math.floor(Math.random()*19) - 4)); A = g(); B = g(); build(); };
+    build();
+  },
+  quiz: [
+    { q: 'For <code>int[][] m = new int[3][4];</code> what are <code>m.length</code> and <code>m[0].length</code>?', o: ['3 and 4', '4 and 3', '12 and 4', '3 and 3'], a: 0, why: '<code>m.length</code> is the number of rows (3); <code>m[0].length</code> is the number of columns in row 0 (4).' },
+    { q: 'What is the last valid element of <code>new int[3][4]</code>?', o: ['m[3][4]', 'm[2][3]', 'm[3][3]', 'm[2][4]'], a: 1, why: 'Indexes start at 0, so rows go 0–2 and columns 0–3.' }
+  ]
+},
+{
+  title: 'Matrix multiplication', short: '2D arrays', concepts: ['triple loop', 'dot product'], java: 'Lab8_MatrixMultiply',
+  statement: 'Write a program to multiply two matrices using a two-dimensional array.',
+  hints: [
+    'You can multiply A (r1 × c1) by B (r2 × c2) only when <code>c1 == r2</code>.',
+    'The result has size r1 × c2.',
+    'Each cell is row i of A "dotted" with column j of B: multiply pairs and add them up.',
+    'That needs a third loop: <code>for k … p[i][j] += a[i][k] * b[k][j];</code>'
+  ],
+  approach: 'Check c1 == r2 → read A and B → for i (rows of A), for j (columns of B), for k (shared size): p[i][j] += a[i][k] * b[k][j] → print.',
+  tryit(root){
+    const sel = (id, v) => `<select id="${id}">${[1,2,3,4].map(x=>`<option ${x===v?'selected':''}>${x}</option>`).join('')}</select>`;
+    root.append(h(`<div><div class="row">
+      <label class="field">A rows${sel('r1',2)}</label><label class="field">A cols${sel('c1',2)}</label>
+      <label class="field">B rows${sel('r2',2)}</label><label class="field">B cols${sel('c2',2)}</label>
+      <button class="btn" id="rnd">Random values</button>
+    </div><p class="note">Click or hover a result cell: the row of A and column of B it uses light up.</p><div class="mats" id="mats"></div><div class="calc" id="calc">Hover a cell in A × B</div></div>`));
+    let A = [[1,2],[3,4]], B = [[5,6],[7,8]];
+    const v = id => +$('#' + id, root).value;
+    const build = () => {
+      const r1 = v('r1'), c1 = v('c1'), r2 = v('r2'), c2 = v('c2');
+      const fit = (M, r, c) => Array.from({length:r}, (_, i) => Array.from({length:c}, (_, j) => (M[i] && M[i][j] != null) ? M[i][j] : 1));
+      A = fit(A, r1, c1); B = fit(B, r2, c2);
+      const mats = $('#mats', root); mats.innerHTML = '';
+      const ed = (M, c, name) => { const w = h(`<div><div class="mat" style="grid-template-columns:repeat(${c},auto)"></div><div class="mlabel">${name}</div></div>`);
+        M.forEach((row, i) => row.forEach((val, j) => { const inp = h(`<input type="number" value="${val}" data-i="${i}" data-j="${j}">`); inp.oninput = () => { M[i][j] = parseInt(inp.value, 10) || 0; calc(); }; $('.mat', w).append(inp); })); return w; };
+      const wa = ed(A, c1, `A (${r1}×${c1})`), wb = ed(B, c2, `B (${r2}×${c2})`);
+      mats.append(wa, h('<span class="op">×</span>'), wb);
+      if (c1 !== r2){ mats.append(h('<span class="op">=</span>'), h(`<div class="verdict n" style="margin:0">Cannot multiply: columns of A (${c1}) ≠ rows of B (${r2})</div>`)); $('#calc', root).textContent = 'Fix the sizes so A cols = B rows.'; return; }
+      const res = h(`<div><div class="mat" id="res" style="grid-template-columns:repeat(${c2},auto)"></div><div class="mlabel">A × B (${r1}×${c2})</div></div>`);
+      mats.append(h('<span class="op">=</span>'), res);
+      const calc = () => {
+        const R = $('#res', root); R.innerHTML = '';
+        for (let i = 0; i < r1; i++) for (let j = 0; j < c2; j++){
+          let s = 0; const terms = []; for (let k = 0; k < c1; k++){ s += A[i][k] * B[k][j]; terms.push(`${A[i][k]}×${B[k][j]}`); }
+          const cell = h(`<div class="cell res">${s}</div>`);
+          const on = () => {
+            R.querySelectorAll('.cell').forEach(x => x.classList.remove('sel')); cell.classList.add('sel');
+            wa.querySelectorAll('input').forEach(x => x.classList.toggle('hl', +x.dataset.i === i));
+            wb.querySelectorAll('input').forEach(x => x.classList.toggle('hl', +x.dataset.j === j));
+            $('#calc', root).textContent = `p[${i}][${j}] = ${terms.join(' + ')} = ${s}`;
+          };
+          cell.onmouseenter = on; cell.onclick = on; R.append(cell);
+        }
+      };
+      calc();
+    };
+    ['r1','c1','r2','c2'].forEach(id => $('#' + id, root).onchange = build);
+    $('#rnd', root).onclick = () => { const g = (r, c) => Array.from({length:r}, () => Array.from({length:c}, () => Math.floor(Math.random()*10) - 2)); A = g(v('r1'), v('c1')); B = g(v('r2'), v('c2')); build(); };
+    build();
+  },
+  quiz: [
+    { q: 'A is 2 × 3 and B is 3 × 4. What size is A × B?', o: ['2 × 4', '3 × 3', '4 × 2', 'Cannot multiply'], a: 0, why: 'Inner sizes match (3 = 3); the result takes the outer sizes: 2 × 4.' },
+    { q: 'For A = [[1,2],[3,4]] and B = [[5,6],[7,8]], what is p[1][0]?', o: ['19', '22', '43', '50'], a: 2, why: 'Row 1 of A is (3, 4); column 0 of B is (5, 7). 3×5 + 4×7 = 15 + 28 = 43.' }
+  ]
+},
+{
+  title: 'Write & read a text file', short: 'File I/O', concepts: ['FileWriter', 'BufferedReader', 'try-catch'], java: 'Lab9_FileReadWrite',
+  statement: 'Write a Java program to write and read a plain text file.',
+  hints: [
+    'Import from <code>java.io</code>: <code>FileWriter</code>, <code>PrintWriter</code>, <code>FileReader</code>, <code>BufferedReader</code>, <code>IOException</code>.',
+    'Write with <code>PrintWriter out = new PrintWriter(new FileWriter("students.txt"));</code> and <code>out.println(...)</code>.',
+    'Read with <code>BufferedReader</code>; <code>readLine()</code> returns <code>null</code> at the end of the file.',
+    'File operations can fail, so wrap them in <code>try ( … ) { } catch (IOException e) { }</code>. Try-with-resources closes the file for you.'
+  ],
+  approach: 'Part 1: open a writer → println each line → close. Part 2: open a reader → while ((line = readLine()) != null) print it → close. new FileWriter(name, true) appends instead of overwriting.',
+  tryit(root){
+    root.append(h(`<div><div class="two"><div>
+      <label class="field">Lines to write (one per line)<textarea id="txt" rows="5">Ahamed,HNDIT,Year 2\nFathima,HNDIT,Year 2\nRavi,HNDIT,Year 2</textarea></label>
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary" id="w">Write file</button><button class="btn" id="r">Read file</button><button class="btn" id="del">Delete file</button>
+        <label class="toggle"><input type="checkbox" id="app"> Append mode</label>
+      </div><p class="note">This simulates the program's two parts with a virtual file, so you can see overwrite vs append and what happens when the file is missing.</p></div>
+      <div class="filebox"><div class="fh">📄 <span id="fn">students.txt</span> <span id="fs" style="margin-left:auto"></span></div><pre id="fc"></pre></div></div>
+      <div id="t"></div></div>`));
+    const t = term('Lab9_FileReadWrite'); $('#t', root).append(t);
+    let file = null;
+    const show = () => { $('#fc', root).textContent = file === null ? '(file does not exist)' : file.join('\n'); $('#fs', root).textContent = file === null ? '' : `${file.length} line${file.length===1?'':'s'}`; };
+    $('#w', root).onclick = () => {
+      const lines = $('#txt', root).value.split('\n').filter(l => l.length);
+      const app = $('#app', root).checked;
+      file = app && file ? file.concat(lines) : lines; show();
+      t.set([['dim', `// new FileWriter("students.txt"${app ? ', true' : ''})  ${app ? 'appends' : 'overwrites'}\n`],['p','Data written to students.txt\n']]);
+    };
+    $('#r', root).onclick = () => {
+      if (file === null) return t.set([['p','Error reading file: students.txt (No such file or directory)\n'],['dim','// FileReader threw FileNotFoundException, caught as IOException']]);
+      t.set([['p','Reading students.txt:\n' + file.map((l, i) => `${i+1}: ${l}`).join('\n') + '\n'],['dim', `// readLine() returned null after line ${file.length}, loop ended`]]);
+    };
+    $('#del', root).onclick = () => { file = null; show(); t.set([['dim','// file deleted — try Read file now']]); };
+    show(); t.set([['dim','// press Write file, then Read file']]);
+  },
+  quiz: [
+    { q: 'What does <code>readLine()</code> return when there are no more lines?', o: ['""', '"EOF"', 'null', '-1'], a: 2, why: 'It returns <code>null</code>, which is why the loop condition is <code>(line = in.readLine()) != null</code>.' },
+    { q: 'Why must file code be inside <code>try-catch</code>?', o: ['It runs faster', 'IOException is a checked exception and must be handled', 'To close the console', 'It is optional'], a: 1, why: 'The compiler forces you to catch or declare checked exceptions like IOException.' }
+  ]
+},
+{
+  title: 'read, sort, print methods', short: 'Methods + sorting', concepts: ['methods', 'arrays', 'bubble sort'], java: 'Lab10_ArrayMethods',
+  statement: 'Write three methods in Java: <br>a. To read an array of numbers — <code>read(int a[])</code><br>b. To sort the above read array of numbers with any sorting method — <code>sort(int a[])</code><br>c. To print the array of sorted numbers — <code>print(int a[])</code>',
+  hints: [
+    'Make each method <code>static void</code> so <code>main</code> can call it directly.',
+    'Arrays are passed by reference: changes inside <code>read</code> and <code>sort</code> are visible in <code>main</code>, so no return value is needed.',
+    'Bubble sort: compare neighbours <code>a[j]</code> and <code>a[j+1]</code>; swap if they are in the wrong order.',
+    'After pass i, the last i elements are already in place, so the inner loop can stop at <code>a.length - 1 - i</code>.'
+  ],
+  approach: 'main: ask for n → create int[n] → read(numbers) → sort(numbers) → print(numbers). Sort with two nested loops and a temp variable for swapping.',
+  tryit(root){
+    root.append(h(`<div><div class="row">
+      <label class="field">Numbers (space or comma separated)<input id="nums" type="text" value="42 7 19 3 25" style="width:260px"></label>
+      <button class="btn" id="load">Load</button><button class="btn" id="rnd">Random</button>
+      <button class="btn primary" id="step">Step</button><button class="btn" id="play">Play</button>
+    </div><div class="bars" id="bars"></div>
+    <div class="msg" id="msg"></div>
+    <div class="stats"><span>Pass i: <b id="si">0</b></span><span>Comparisons: <b id="sc">0</b></span><span>Swaps: <b id="ss">0</b></span></div>
+    <div id="t"></div></div>`));
+    const t = term('Lab10_ArrayMethods'); $('#t', root).append(t);
+    let steps = [], k = 0, timer = null, input = [];
+    const prep = (arr) => {
+      input = arr.slice(); steps = []; const a = arr.slice(); let cmp = 0, sw = 0, n = a.length;
+      steps.push({a: a.slice(), hi: [], kind: '', sorted: 0, cmp, sw, i: 0, msg: 'Array after read(). Press Step to start sort().'});
+      for (let i = 0; i < n - 1; i++){
+        let swapped = false;
+        for (let j = 0; j < n - 1 - i; j++){
+          cmp++;
+          steps.push({a: a.slice(), hi: [j, j+1], kind: 'cmp', sorted: i, cmp, sw, i, msg: `Compare a[${j}]=${a[j]} and a[${j+1}]=${a[j+1]}`});
+          if (a[j] > a[j+1]){ [a[j], a[j+1]] = [a[j+1], a[j]]; sw++; swapped = true;
+            steps.push({a: a.slice(), hi: [j, j+1], kind: 'swp', sorted: i, cmp, sw, i, msg: `${a[j+1]} > ${a[j]} → swap`}); }
+        }
+        steps.push({a: a.slice(), hi: [], kind: '', sorted: i + 1, cmp, sw, i, msg: `End of pass ${i}: ${a[n-1-i]} is now in its final place`});
+      }
+      steps.push({a: a.slice(), hi: [], kind: '', sorted: n, cmp, sw, i: Math.max(n-2,0), msg: 'Sorted! print() outputs the array.', end: true});
+      k = 0; draw();
+      t.set([['p','How many numbers? '],['in', n + '\n'],['p', `Enter ${n} numbers:\n`],['in', input.join(' ') + '\n']]);
+    };
+    const draw = () => {
+      const s = steps[k], max = Math.max(...s.a.map(Math.abs), 1), n = s.a.length;
+      $('#bars', root).innerHTML = s.a.map((v, idx) => {
+        let cls = ''; if (idx >= n - s.sorted) cls = 'ok'; if (s.hi.includes(idx)) cls = s.kind;
+        return `<div class="barc ${cls}"><div class="b" style="height:${Math.max(6, Math.abs(v)/max*160)}px"></div><div class="v">${v}</div></div>`;
+      }).join('');
+      $('#msg', root).textContent = s.msg; $('#si', root).textContent = s.i; $('#sc', root).textContent = s.cmp; $('#ss', root).textContent = s.sw;
+      if (s.end) t.set([['p','How many numbers? '],['in', n + '\n'],['p', `Enter ${n} numbers:\n`],['in', input.join(' ') + '\n'],['p', 'Sorted: ' + s.a.join(' ') + ' \n']]);
+    };
+    const parse = () => $('#nums', root).value.split(/[\s,]+/).filter(Boolean).map(Number).filter(x => !isNaN(x)).slice(0, 12);
+    const stop = () => { clearInterval(timer); timer = null; $('#play', root).textContent = 'Play'; };
+    $('#load', root).onclick = () => { stop(); const a = parse(); if (a.length) prep(a); };
+    $('#rnd', root).onclick = () => { stop(); const a = Array.from({length: 7}, () => Math.floor(Math.random()*90) + 5); $('#nums', root).value = a.join(' '); prep(a); };
+    $('#step', root).onclick = () => { stop(); if (k < steps.length - 1){ k++; draw(); } };
+    $('#play', root).onclick = () => {
+      if (timer) return stop();
+      if (k >= steps.length - 1){ k = 0; }
+      $('#play', root).textContent = 'Pause';
+      timer = setInterval(() => { if (k >= steps.length - 1) return stop(); k++; draw(); }, 550);
+    };
+    $('#nums', root).onkeydown = e => { if (e.key === 'Enter') $('#load', root).click(); };
+    prep(parse());
+  },
+  quiz: [
+    { q: 'Why can <code>sort(int a[])</code> be <code>void</code> and still change the array in <code>main</code>?', o: ['Java copies the array back automatically', 'The method receives a reference to the same array object', 'Because it is static', 'It cannot — it must return the array'], a: 1, why: 'The parameter refers to the same array in memory, so swaps inside the method are seen by the caller.' },
+    { q: 'How many comparisons does this bubble sort make for 5 numbers?', o: ['5', '10', '20', '25'], a: 1, why: 'Passes compare 4 + 3 + 2 + 1 = 10 pairs, i.e. n(n − 1)/2.' }
+  ]
+}
+];
+
+/* ---------------- rendering ---------------- */
+function renderNav(){
+  const nav = $('#nav'); const cur = currentIdx();
+  nav.innerHTML = '';
+  TASKS.forEach((tk, i) => {
+    const li = h(`<li><button class="${i === cur ? 'active' : ''} ${done.has(i) ? 'done' : ''}"><span class="num">${done.has(i) ? '✓' : i + 1}</span><span class="t">${esc(tk.title)}<small>${esc(tk.short)}</small></span><span class="chk"></span></button></li>`);
+    $('button', li).onclick = () => go('task-' + (i + 1));
+    nav.append(li);
+  });
+  const pct = Math.round(done.size / TASKS.length * 100);
+  $('#pfill').style.width = pct + '%'; $('#plabel').textContent = `${done.size} of ${TASKS.length} complete`; $('#ppct').textContent = pct + '%';
+}
+function currentIdx(){ const m = location.hash.match(/^#task-(\d+)$/); return m ? +m[1] - 1 : -1; }
+function go(hash){ if (hash) location.hash = hash; else { history.replaceState(null, '', location.pathname + location.search); route(); } $('#side').classList.remove('open'); }
+
+function renderHome(){
+  const main = $('#main'); main.innerHTML = '';
+  main.append(h(`<button class="btn small menu-btn" onclick="document.getElementById('side').classList.add('open')">☰ Tasks</button>`));
+  main.append(h(`<div><div class="eyebrow">HNDIT3012 · Object Oriented Programming</div>
+    <h1>Lab Sheet 1 — Java Programming Fundamentals</h1>
+    <p class="lead">Ten hands-on tasks that put Week 3's control flow statements to work. For each task: read the problem, reveal hints one at a time, experiment in the live simulator, compare with the verified solution, then check yourself with a short quiz.</p>
+    <div class="howto">
+      <div class="card"><b>1 · Problem</b><span class="note">Statement, approach and progressive hints.</span></div>
+      <div class="card"><b>2 · Try it</b><span class="note">Run the logic with your own input and watch each step.</span></div>
+      <div class="card"><b>3 · Solution</b><span class="note">Complete Java code, compiled and tested. Copy it into your IDE.</span></div>
+      <div class="card"><b>4 · Quiz</b><span class="note">Answer both questions correctly to mark the task complete.</span></div>
+    </div></div>`));
+  const g = h('<div class="grid"></div>');
+  TASKS.forEach((tk, i) => {
+    const c = h(`<div class="card tcard ${done.has(i) ? 'done' : ''}"><span class="n">TASK ${String(i+1).padStart(2,'0')}</span><span class="tt">${esc(tk.title)}</span><div class="chips">${tk.concepts.map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div></div>`);
+    c.onclick = () => go('task-' + (i + 1)); g.append(c);
+  });
+  main.append(g);
+}
+
+const tabState = {};
+function renderTask(i){
+  const tk = TASKS[i], main = $('#main'); main.innerHTML = '';
+  main.append(h(`<button class="btn small menu-btn" onclick="document.getElementById('side').classList.add('open')">☰ Tasks</button>`));
+  main.append(h(`<div class="task-head"><div><div class="eyebrow">Task ${i + 1} of ${TASKS.length}</div><h1>${esc(tk.title)}</h1><div class="chips">${tk.concepts.map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div></div></div>`));
+  const tabs = h(`<div class="tabs"><button data-t="problem">Problem</button><button data-t="try">Try it</button><button data-t="code">Solution</button><button data-t="quiz">Quiz</button></div>`);
+  const body = h('<div></div>');
+  main.append(tabs, body);
+  const show = (name) => {
+    tabState[i] = name;
+    tabs.querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.t === name));
+    body.innerHTML = '';
+    if (name === 'problem') renderProblem(tk, body, show);
+    if (name === 'try') tk.tryit(body);
+    if (name === 'code') renderCode(tk, i, body);
+    if (name === 'quiz') renderQuiz(tk, i, body);
+  };
+  tabs.querySelectorAll('button').forEach(b => b.onclick = () => show(b.dataset.t));
+  show(tabState[i] || 'problem');
+  const pager = h(`<div class="pager"><button class="btn" ${i === 0 ? 'disabled' : ''}>← Previous task</button><button class="btn" ${i === TASKS.length - 1 ? 'disabled' : ''}>Next task →</button></div>`);
+  const [prev, next] = pager.querySelectorAll('button');
+  prev.onclick = () => go('task-' + i); next.onclick = () => go('task-' + (i + 2));
+  main.append(pager);
+  window.scrollTo(0, 0);
+}
+function renderProblem(tk, body, show){
+  body.append(h(`<div class="statement">${tk.statement}</div>`));
+  body.append(h(`<h3>Approach</h3>`), h(`<p>${esc(tk.approach)}</p>`));
+  body.append(h(`<h3>Hints</h3>`));
+  const hb = h('<div></div>'); body.append(hb);
+  let n = 0;
+  const btn = h(`<button class="btn">Show hint 1 of ${tk.hints.length}</button>`);
+  btn.onclick = () => { hb.append(h(`<div class="hint"><b>Hint ${n + 1}.</b> ${tk.hints[n]}</div>`)); n++; if (n >= tk.hints.length) btn.remove(); else btn.textContent = `Show hint ${n + 1} of ${tk.hints.length}`; };
+  body.append(btn);
+  const go2 = h(`<div class="row" style="margin-top:22px"><button class="btn primary">Try it in the simulator →</button></div>`);
+  $('button', go2).onclick = () => show('try'); body.append(go2);
+}
+const revealed = new Set();
+function renderCode(tk, i, body){
+  const code = JAVA[tk.java];
+  const draw = () => {
+    body.innerHTML = '';
+    body.append(h(`<p class="note">File name: <code>${tk.java}.java</code> — the class name must match the file name.</p>`));
+    body.append(codeBlock(code));
+  };
+  if (revealed.has(i)) return draw();
+  const g = h(`<div class="gate"><p>Have you tried writing it yourself first? Looking too early makes the lab much less useful.</p><button class="btn primary">I've tried — show the solution</button></div>`);
+  $('button', g).onclick = () => { revealed.add(i); draw(); };
+  body.append(g);
+}
+function renderQuiz(tk, i, body){
+  const state = tk.quiz.map(() => null);
+  tk.quiz.forEach((q, qi) => {
+    const el = h(`<div class="q"><div class="qt">${qi + 1}. ${q.q}</div><div class="opts"></div></div>`);
+    q.o.forEach((opt, oi) => {
+      const b = h(`<button>${esc(opt)}</button>`);
+      b.onclick = () => {
+        el.querySelectorAll('.opts button').forEach((x, xi) => { x.disabled = true; if (xi === q.a) x.classList.add('right'); });
+        if (oi !== q.a) b.classList.add('wrong');
+        state[qi] = oi === q.a;
+        el.append(h(`<div class="why">${oi === q.a ? '<b style="color:var(--good)">Correct.</b> ' : '<b style="color:var(--bad)">Not quite.</b> '}${q.why}</div>`));
+        check();
+      };
+      $('.opts', el).append(b);
+    });
+    body.append(el);
+  });
+  const bar = h(`<div class="done-bar"><span id="qs"></span><div class="row"><button class="btn" id="retry">Retry quiz</button><button class="btn primary" id="mark"></button></div></div>`);
+  body.append(bar);
+  const check = () => {
+    const answered = state.filter(x => x !== null).length, right = state.filter(Boolean).length;
+    $('#qs', bar).textContent = answered < state.length ? `${answered} of ${state.length} answered` : `${right} of ${state.length} correct`;
+    if (answered === state.length && right === state.length && !done.has(i)){ done.add(i); saveDone(); }
+    $('#mark', bar).textContent = done.has(i) ? '✓ Completed — mark as not done' : 'Mark task complete';
+  };
+  $('#retry', bar).onclick = () => { body.innerHTML = ''; renderQuiz(tk, i, body); };
+  $('#mark', bar).onclick = () => { done.has(i) ? done.delete(i) : done.add(i); saveDone(); check(); };
+  check();
+}
+
+function route(){
+  const i = currentIdx();
+  if (i >= 0 && i < TASKS.length) renderTask(i); else renderHome();
+  renderNav();
+}
+window.addEventListener('hashchange', route);
+route();
+</script>
+</body>
+</html>
